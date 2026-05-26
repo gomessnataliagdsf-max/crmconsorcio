@@ -537,13 +537,90 @@ async function loadMsgs(lid) {
     h.scrollTop = h.scrollHeight;
   } catch (e) { h.innerHTML = '<div class="mdiv">Erro ao carregar histórico.</div>'; }
 }
+const respostasLead = {
+  'Automóvel': [
+    "Olá! Sim, ainda tenho interesse no consórcio de carro sim! Qual o valor da parcela?",
+    "Boa tarde! Queria saber mais sobre o consórcio de automóvel. Tem alguma promoção?",
+    "Oi! Vi que vocês trabalham com consórcio de carro. Qual o prazo máximo?",
+    "Olá, me interessei sim! Qual a taxa de administração de vocês?",
+    "Oi! Tenho um carro na mente, um Corolla. Dá pra fazer pelo consórcio?",
+    "Boa! Mas tenho uma dúvida: posso usar o FGTS pra dar um lance?",
+    "Entendi! E se eu for contemplado, posso escolher qualquer concessionária?",
+    "Hmm, deixa eu pensar... você pode me mandar mais detalhes por escrito?",
+    "Faz sentido! Mas minha renda é de uns R$ 4.000, dá pra fazer?",
+    "Legal! Quanto tempo em média pra ser contemplado?",
+  ],
+  'Motocicleta': [
+    "Oi! Tenho interesse sim numa moto Honda. Como funciona o consórcio?",
+    "Boa tarde! Qual o valor mínimo de consórcio de moto que vocês têm?",
+    "Olá! Vi o anúncio de vocês no Instagram. Quero saber mais sobre consórcio de moto.",
+    "Oi! Dá pra fazer consórcio de moto com renda de R$ 2.500?",
+    "Entendido! E o seguro, tá incluso no consórcio de moto?",
+    "Legal! Posso dar um lance pra ser contemplado mais rápido?",
+    "Hmm, interessante... qual a menor parcela disponível pra moto?",
+    "Certo! Mas preciso de uma moto o quanto antes. Tem alguma opção mais rápida?",
+  ],
+  'Imóvel': [
+    "Olá! Tenho interesse sim em um apartamento de 2 quartos. Como funciona?",
+    "Boa tarde! Quero comprar uma casa. O consórcio é mais vantajoso que o financiamento?",
+    "Oi! Vi que vocês fazem consórcio de imóvel. Qual o crédito máximo disponível?",
+    "Entendi! E posso usar o FGTS como lance no consórcio de imóvel?",
+    "Interessante! Mas e se o imóvel que eu quero custar mais que o crédito?",
+    "Legal! Qual a documentação necessária pra fazer o consórcio de imóvel?",
+    "Hmm, deixa eu ver... a parcela de R$ 890 cabe no meu orçamento sim!",
+    "Ótimo! E posso usar o crédito pra comprar terreno também?",
+    "Faz sentido! Tem alguma taxa de adesão pra entrar no grupo?",
+    "Certo! Quanto tempo em média pra ser contemplado no imóvel?",
+  ],
+  'default': [
+    "Olá! Recebi sua mensagem. Pode me contar mais sobre o consórcio?",
+    "Oi! Tenho interesse sim. Quais são as condições?",
+    "Boa tarde! Pode me mandar mais detalhes sobre os planos disponíveis?",
+    "Entendido! E qual o valor mínimo de entrada?",
+    "Legal! Como funciona o processo de contemplação?",
+    "Hmm, interessante! Qual a diferença entre consórcio e financiamento?",
+    "Certo! Posso parcelar em quantas vezes?",
+    "Ótimo! E tem alguma promoção vigente agora?",
+    "Sim, tenho interesse! Mas preciso pensar um pouco. Você pode me ligar amanhã?",
+    "Entendi tudo! Vou conversar com minha família e te dou um retorno.",
+  ]
+};
+
+function getRespostaAleatoria(interesse) {
+  const lista = respostasLead[interesse] || respostasLead['default'];
+  return lista[Math.floor(Math.random() * lista.length)];
+}
+
 async function sendMsg() {
   if (!selId) { toast('Selecione um contato primeiro.', 'err'); return; }
   const b = document.getElementById('mbox');
   const t = b.value.trim(); if (!t) return;
   b.value = '';
-  try { await spost('mensagens', { lead_id: selId, texto: t, direcao: 'out' }); await loadMsgs(selId); }
-  catch (e) { toast('Erro ao enviar mensagem.', 'err'); b.value = t; }
+  try {
+    await spost('mensagens', { lead_id: selId, texto: t, direcao: 'out' });
+    await loadMsgs(selId);
+
+    // Simula digitação do lead e resposta automática
+    const lead = leads.find(l => l.id === selId);
+    const interesse = lead ? lead.interesse : '';
+    const h = document.getElementById('history');
+
+    // Mostra "digitando..."
+    const typingId = 'typing-' + Date.now();
+    h.innerHTML += `<div id="${typingId}" class="hmsg in"><div class="mbub in" style="color:var(--text3);font-style:italic">digitando...</div></div>`;
+    h.scrollTop = h.scrollHeight;
+
+    // Delay realista entre 2s e 5s
+    const delay = 2000 + Math.random() * 3000;
+    setTimeout(async () => {
+      try {
+        const resposta = getRespostaAleatoria(interesse);
+        await spost('mensagens', { lead_id: selId, texto: resposta, direcao: 'in' });
+        await loadMsgs(selId);
+      } catch (e) { console.error(e); }
+    }, delay);
+
+  } catch (e) { toast('Erro ao enviar mensagem.', 'err'); b.value = t; }
 }
 
 async function salvarCliente() {
