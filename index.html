@@ -273,6 +273,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
         </div>
         <div class="ltable">
           <div class="thead"><div class="th">Nome</div><div class="th">Telefone</div><div class="th">Interesse</div><div class="th">Origem</div><div class="th">Status</div><div class="th">Observações</div><div class="th">Ações</div></div>
+          <div style="padding:9px 16px;background:#FFFBEA;border-bottom:1px solid var(--border);font-size:12px;color:#7A5800;display:flex;align-items:center;gap:6px"><i class="ti ti-info-circle" style="font-size:14px"></i>Leads com status <strong>Fechado</strong> podem ser convertidos em cliente clicando no botão <strong>⭐ Converter</strong></div>
           <div id="leads-body"><div class="loading"><div class="spin"></div>Carregando leads...</div></div>
         </div>
       </div>
@@ -365,6 +366,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </div>
 
 <div class="toast" id="toast-el"></div>
+
+<!-- MODAL CONVERTER LEAD EM CLIENTE -->
+<div id="mconversor" class="mbdrop" style="display:none" onclick="if(event.target===this)fecharConversor()">
+  <div class="modal" style="max-width:560px">
+    <div class="mtitle">
+      <span style="display:flex;align-items:center;gap:8px"><i class="ti ti-user-check" style="color:#7B3FF2;font-size:20px"></i>Converter Lead em Cliente</span>
+      <button class="mclose" onclick="fecharConversor()"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="background:#F3EEFF;border:1px solid #C4A8F7;border-radius:var(--r);padding:12px 14px;margin-bottom:18px;font-size:13px;color:#4A2090">
+      <i class="ti ti-sparkles"></i> Os dados do lead foram preenchidos automaticamente. Complete as informações que faltam e salve!
+    </div>
+    <div class="frow">
+      <div><label class="flbl">Nome completo *</label><input class="finp" id="conv-nome" placeholder="Nome do cliente"></div>
+      <div><label class="flbl">CPF</label><input class="finp" id="conv-cpf" placeholder="000.000.000-00"></div>
+    </div>
+    <div class="frow">
+      <div><label class="flbl">Telefone</label><input class="finp" id="conv-tel" placeholder="(00) 00000-0000"></div>
+      <div><label class="flbl">E-mail</label><input class="finp" id="conv-email" placeholder="email@exemplo.com"></div>
+    </div>
+    <div class="frow">
+      <div><label class="flbl">Renda mensal</label><input class="finp" id="conv-renda" placeholder="R$ 0.000,00"></div>
+      <div><label class="flbl">Tipo de consórcio</label>
+        <select class="fsel" id="conv-tipo"><option value="">Selecione...</option><option>Automóvel</option><option>Motocicleta</option><option>Imóvel</option><option>Outros bens</option></select>
+      </div>
+    </div>
+    <div class="frow">
+      <div><label class="flbl">Valor desejado</label><input class="finp" id="conv-valor" placeholder="R$ 0.000,00"></div>
+      <div><label class="flbl">Origem</label><input class="finp" id="conv-origem" readonly style="background:var(--bg3)"></div>
+    </div>
+    <div style="margin-bottom:14px"><label class="flbl">Observações</label><textarea class="ftxt" id="conv-obs" rows="2" placeholder="Anotações adicionais..."></textarea></div>
+    <div class="mfoot">
+      <button class="btn-s" onclick="fecharConversor()">Cancelar</button>
+      <button class="btn-sv" style="background:#7B3FF2" id="conv-save" onclick="confirmarConversao()"><i class="ti ti-user-check"></i> Confirmar cadastro</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const SURL = 'https://yzjowmmfrrrnpnuwgvqd.supabase.co/rest/v1';
@@ -463,11 +500,53 @@ function renderLeads() {
       <div class="lacts">
         <button class="abtn wpp" onclick="abrirWpp('${l.telefone || ''}')"><i class="ti ti-brand-whatsapp"></i></button>
         <button class="abtn" onclick="openLM('edit','${l.id}')"><i class="ti ti-edit"></i></button>
+        ${l.status === 'close' ? `<button class="abtn" style="color:#7B3FF2;border-color:#C4A8F7;background:#F3EEFF" onclick="abrirConversor('${l.id}')" title="Converter em cliente"><i class="ti ti-user-check"></i></button>` : ''}
         <button class="abtn del" onclick="delLead('${l.id}')"><i class="ti ti-trash"></i></button>
       </div>
     </div>`).join('');
 }
-function setF(f, el) { curF = f; document.querySelectorAll('.ftab').forEach(t => t.classList.remove('active')); el.classList.add('active'); renderLeads(); }
+function abrirConversor(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById('conv-nome').value = l.nome || '';
+  document.getElementById('conv-tel').value = l.telefone || '';
+  document.getElementById('conv-cpf').value = '';
+  document.getElementById('conv-email').value = '';
+  document.getElementById('conv-renda').value = '';
+  document.getElementById('conv-valor').value = '';
+  document.getElementById('conv-obs').value = l.observacoes || '';
+  document.getElementById('conv-origem').value = l.origem || '';
+  const tipMap = { 'Automóvel': 'Automóvel', 'Motocicleta': 'Motocicleta', 'Imóvel': 'Imóvel' };
+  document.getElementById('conv-tipo').value = tipMap[l.interesse] || '';
+  document.getElementById('conv-save').dataset.leadId = id;
+  document.getElementById('mconversor').style.display = 'flex';
+}
+function fecharConversor() { document.getElementById('mconversor').style.display = 'none'; }
+async function confirmarConversao() {
+  const nome = document.getElementById('conv-nome').value.trim();
+  if (!nome) { toast('Informe o nome do cliente.', 'err'); return; }
+  const btn = document.getElementById('conv-save');
+  btn.innerHTML = 'Salvando...'; btn.disabled = true;
+  try {
+    await spost('clientes', {
+      nome,
+      cpf: document.getElementById('conv-cpf').value,
+      telefone: document.getElementById('conv-tel').value,
+      email: document.getElementById('conv-email').value,
+      renda: document.getElementById('conv-renda').value,
+      tipo_consorcio: document.getElementById('conv-tipo').value,
+      valor_desejado: document.getElementById('conv-valor').value,
+      origem: document.getElementById('conv-origem').value,
+      observacoes: document.getElementById('conv-obs').value
+    });
+    fecharConversor();
+    toast('✅ Lead convertido em cliente com sucesso!', 'ok');
+    loadDash();
+  } catch (e) { toast('Erro ao converter lead.', 'err'); }
+  finally { btn.innerHTML = '<i class="ti ti-user-check"></i> Confirmar cadastro'; btn.disabled = false; }
+}
+
+
 function abrirWpp(tel) {
   if (!tel) { toast('Lead sem telefone cadastrado.', 'err'); return; }
   window.open(`https://wa.me/55${tel.replace(/\D/g, '')}`, '_blank');
@@ -537,58 +616,90 @@ async function loadMsgs(lid) {
     h.scrollTop = h.scrollHeight;
   } catch (e) { h.innerHTML = '<div class="mdiv">Erro ao carregar histórico.</div>'; }
 }
-const respostasLead = {
-  'Automóvel': [
-    "Olá! Sim, ainda tenho interesse no consórcio de carro sim! Qual o valor da parcela?",
-    "Boa tarde! Queria saber mais sobre o consórcio de automóvel. Tem alguma promoção?",
-    "Oi! Vi que vocês trabalham com consórcio de carro. Qual o prazo máximo?",
-    "Olá, me interessei sim! Qual a taxa de administração de vocês?",
-    "Oi! Tenho um carro na mente, um Corolla. Dá pra fazer pelo consórcio?",
-    "Boa! Mas tenho uma dúvida: posso usar o FGTS pra dar um lance?",
-    "Entendi! E se eu for contemplado, posso escolher qualquer concessionária?",
-    "Hmm, deixa eu pensar... você pode me mandar mais detalhes por escrito?",
-    "Faz sentido! Mas minha renda é de uns R$ 4.000, dá pra fazer?",
-    "Legal! Quanto tempo em média pra ser contemplado?",
-  ],
-  'Motocicleta': [
-    "Oi! Tenho interesse sim numa moto Honda. Como funciona o consórcio?",
-    "Boa tarde! Qual o valor mínimo de consórcio de moto que vocês têm?",
-    "Olá! Vi o anúncio de vocês no Instagram. Quero saber mais sobre consórcio de moto.",
-    "Oi! Dá pra fazer consórcio de moto com renda de R$ 2.500?",
-    "Entendido! E o seguro, tá incluso no consórcio de moto?",
-    "Legal! Posso dar um lance pra ser contemplado mais rápido?",
-    "Hmm, interessante... qual a menor parcela disponível pra moto?",
-    "Certo! Mas preciso de uma moto o quanto antes. Tem alguma opção mais rápida?",
-  ],
-  'Imóvel': [
-    "Olá! Tenho interesse sim em um apartamento de 2 quartos. Como funciona?",
-    "Boa tarde! Quero comprar uma casa. O consórcio é mais vantajoso que o financiamento?",
-    "Oi! Vi que vocês fazem consórcio de imóvel. Qual o crédito máximo disponível?",
-    "Entendi! E posso usar o FGTS como lance no consórcio de imóvel?",
-    "Interessante! Mas e se o imóvel que eu quero custar mais que o crédito?",
-    "Legal! Qual a documentação necessária pra fazer o consórcio de imóvel?",
-    "Hmm, deixa eu ver... a parcela de R$ 890 cabe no meu orçamento sim!",
-    "Ótimo! E posso usar o crédito pra comprar terreno também?",
-    "Faz sentido! Tem alguma taxa de adesão pra entrar no grupo?",
-    "Certo! Quanto tempo em média pra ser contemplado no imóvel?",
-  ],
-  'default': [
-    "Olá! Recebi sua mensagem. Pode me contar mais sobre o consórcio?",
-    "Oi! Tenho interesse sim. Quais são as condições?",
-    "Boa tarde! Pode me mandar mais detalhes sobre os planos disponíveis?",
-    "Entendido! E qual o valor mínimo de entrada?",
-    "Legal! Como funciona o processo de contemplação?",
-    "Hmm, interessante! Qual a diferença entre consórcio e financiamento?",
-    "Certo! Posso parcelar em quantas vezes?",
-    "Ótimo! E tem alguma promoção vigente agora?",
-    "Sim, tenho interesse! Mas preciso pensar um pouco. Você pode me ligar amanhã?",
-    "Entendi tudo! Vou conversar com minha família e te dou um retorno.",
-  ]
+// ==================== SISTEMA DE RESPOSTAS INTELIGENTES ====================
+const roteiros = {
+  Automóvel: {
+    positivo: [
+      { gatilho: ['oi','olá','boa','bom','tudo'], resposta: "Oi! Que bom falar com você! 😊 Estava esperando seu contato. Você ainda tem interesse no consórcio de automóvel?" },
+      { gatilho: ['sim','tenho','quero','interesse','gostei'], resposta: "Ótimo! Pra te passar os valores certinhos, qual modelo de carro você está pensando? Tem alguma marca em mente?" },
+      { gatilho: ['corolla','civic','uno','gol','hb20','onix','carro','modelo'], resposta: "Excelente escolha! Pra esse modelo, trabalhamos com créditos a partir de R$ 60.000. A parcela começa em torno de R$ 620/mês em 80 meses. Quer que eu monte uma simulação personalizada pra você?" },
+      { gatilho: ['simulação','simula','valor','parcela','quanto'], resposta: "Claro! Posso montar agora mesmo. Me confirma: qual o valor do crédito que você precisa? A partir daí te mostro as opções de prazo e parcela 📊" },
+      { gatilho: ['fgts','lance','contemplação','sorteio'], resposta: "Boa pergunta! Você pode usar o FGTS como lance sim, o que aumenta muito suas chances de contemplação logo nos primeiros meses. Em média nossos clientes são contemplados em 12 a 18 meses. Quer saber mais sobre os tipos de lance?" },
+      { gatilho: ['aceito','vamos','pode','fechar','quero fechar','topei'], resposta: "Que notícia incrível! 🎉 Posso dar andamento agora. Preciso de alguns dados seus: CPF, RG e comprovante de renda. Prefere que eu te envie o formulário por e-mail ou WhatsApp?" },
+      { gatilho: ['obrigado','obrigada','perfeito','ótimo','top','excelente'], resposta: "Fico muito feliz em ajudar! 😊 Qualquer dúvida que surgir pode me chamar aqui mesmo. Vou deixar tudo preparado pra você. Combinado?" },
+    ],
+    negativo: [
+      { gatilho: ['caro','não posso','não consigo','não tenho','sem dinheiro'], resposta: "Entendo! A boa notícia é que o consórcio é exatamente pra isso — sem juros, sem entrada. A parcela cabe no orçamento de quem pensa em comprar um carro a longo prazo. Posso te mostrar a menor parcela disponível?" },
+      { gatilho: ['não quero','desisti','não tenho interesse','deixa','esquece'], resposta: "Tudo bem! Não vou te pressionar. Mas posso deixar sua simulação salva aqui caso mude de ideia? Os valores e condições podem melhorar e te aviso 😊" },
+      { gatilho: ['financiamento','banco','cdc'], resposta: "Faz sentido comparar! A grande diferença é que no consórcio você não paga juros, só taxa de administração. No financiamento, os juros chegam a 20% ao ano. No final, você pode pagar até 40% a mais pelo mesmo carro. Quer ver a comparação lado a lado?" },
+      { gatilho: ['pensar','tempo','depois','semana'], resposta: "Claro, sem problema! Enquanto você pensa, posso te enviar uma proposta fechada por escrito? Assim você tem tudo em mãos pra comparar com calma." },
+    ]
+  },
+  Motocicleta: {
+    positivo: [
+      { gatilho: ['oi','olá','boa','bom'], resposta: "Olá! Boa tarde! 🏍️ Vi que você tem interesse em consórcio de moto. Já tem algum modelo em mente?" },
+      { gatilho: ['sim','tenho','quero','interesse'], resposta: "Ótimo! Trabalhamos com consórcio de moto a partir de R$ 12.000 de crédito. A parcela mais baixa fica em torno de R$ 180/mês. Qual modelo você está pensando?" },
+      { gatilho: ['honda','yamaha','bros','cg','biz','pop','moto','modelo'], resposta: "Boa escolha! Para essa moto, posso te simular um crédito de R$ 18.000 em 60 parcelas de R$ 310/mês, sem juros. Gostaria de ver essa simulação completa?" },
+      { gatilho: ['parcela','valor','simulação','quanto'], resposta: "Claro! Nossos planos de moto vão de R$ 12k a R$ 50k de crédito, em prazos de 36 a 72 meses. Me fala o valor da moto que você quer e te monto a simulação na hora 🔧" },
+      { gatilho: ['aceito','vamos','fechar','quero fechar','topei'], resposta: "Boa demais! 🎉 Pra dar início, vou precisar de: CPF, comprovante de residência e comprovante de renda. Consigo te atender ainda hoje se quiser agilizar!" },
+    ],
+    negativo: [
+      { gatilho: ['caro','não posso','não tenho'], resposta: "Entendo! Mas sabia que nossa parcela mínima de moto começa em R$ 178/mês? É menos que muitos planos de celular. Posso mostrar a opção mais acessível pra você?" },
+      { gatilho: ['pensar','depois','semana','tempo'], resposta: "Com certeza! Enquanto pensa, te mando a simulação por escrito pra ter como referência. Pode ser?" },
+      { gatilho: ['não quero','desisti','não tenho interesse'], resposta: "Sem problema! Se mudar de ideia, pode me chamar. Deixo seu cadastro aqui com as condições salvas 😊" },
+    ]
+  },
+  Imóvel: {
+    positivo: [
+      { gatilho: ['oi','olá','boa','bom'], resposta: "Olá! Tudo bem? 🏠 Fico feliz que entrou em contato! Você tem interesse em consórcio de imóvel. Está pensando em casa, apartamento ou terreno?" },
+      { gatilho: ['sim','tenho','quero','interesse','apartamento','casa','terreno'], resposta: "Que sonho lindo! 😊 Pra começar, qual valor aproximado do imóvel você está buscando? Com isso consigo te mostrar as melhores opções de crédito e parcela." },
+      { gatilho: ['300','280','250','200','400','500','valor','crédito'], resposta: "Perfeito! Para um imóvel nessa faixa, a parcela no consórcio começa em torno de R$ 890/mês, sem entrada e sem juros. Comparando com o financiamento, você economiza facilmente R$ 80.000 no total. Faz sentido pra você?" },
+      { gatilho: ['fgts','lance','contemplação'], resposta: "Sim! No consórcio de imóvel você pode usar o FGTS tanto como lance para ser contemplado mais rápido, quanto para quitar parcelas. É uma das maiores vantagens! Quer saber mais sobre como funciona o lance?" },
+      { gatilho: ['documentação','documento','rg','cpf','renda'], resposta: "Ótima pergunta! Os documentos básicos são: RG, CPF, comprovante de renda dos últimos 3 meses e comprovante de residência. Tudo bem simples. Quer que eu te envie a lista completa por escrito?" },
+      { gatilho: ['aceito','vamos','fechar','quero fechar','topei','combinado'], resposta: "Que notícia maravilhosa! 🎉🏠 Você está um passo mais perto do seu imóvel! Vou montar sua proposta agora. Me passa seu e-mail pra eu enviar o contrato pra assinatura ainda hoje?" },
+      { gatilho: ['obrigado','obrigada','perfeito','ótimo'], resposta: "Fico muito feliz em poder ajudar na realização desse sonho! 🙏 Pode contar comigo em todo o processo. Qualquer dúvida estou aqui!" },
+    ],
+    negativo: [
+      { gatilho: ['caro','muito','não posso','não consigo'], resposta: "Entendo! Mas sabia que o consórcio de imóvel tem a parcela mais acessível do mercado pra esse valor? Sem juros e sem entrada. Posso te mostrar uma opção que caiba no seu orçamento atual?" },
+      { gatilho: ['financiamento','banco','caixa','minha casa'], resposta: "Boa comparação! No financiamento pela Caixa, uma parcela de R$ 890 no consórcio equivaleria a uma parcela de R$ 1.400+ com juros. A diferença vai toda pra você no consórcio. Posso te mostrar a simulação comparativa?" },
+      { gatilho: ['pensar','tempo','depois','marido','esposa','família'], resposta: "Claro, é uma decisão importante e merece ser pensada em família! Posso preparar uma proposta detalhada pra você apresentar? Assim facilita a conversa em casa 😊" },
+      { gatilho: ['não quero','desisti','não tenho interesse','não'], resposta: "Sem problema! Fica à vontade. Se quiser voltar a conversar sobre o assunto, estarei aqui. Posso deixar registrado seu interesse caso apareça alguma promoção especial?" },
+    ]
+  },
+  default: {
+    positivo: [
+      { gatilho: ['oi','olá','boa','bom'], resposta: "Olá! Tudo certo? Fico feliz em falar com você. Me conta, o que você está buscando hoje?" },
+      { gatilho: ['sim','tenho','quero','interesse'], resposta: "Ótimo! Pode contar. Qual modalidade de consórcio você tem mais interesse: carro, moto ou imóvel?" },
+      { gatilho: ['aceito','vamos','fechar','topei'], resposta: "Maravilha! 🎉 Vou dar andamento agora mesmo. Me confirma seus dados pra eu montar a proposta oficial?" },
+      { gatilho: ['obrigado','obrigada','ótimo','perfeito'], resposta: "Fico feliz em ajudar! Qualquer dúvida pode me chamar aqui. Estou à disposição 😊" },
+    ],
+    negativo: [
+      { gatilho: ['caro','não posso','não tenho'], resposta: "Entendo! Posso te mostrar opções que se encaixem melhor no seu orçamento? Temos planos muito acessíveis." },
+      { gatilho: ['pensar','depois','tempo'], resposta: "Claro! Me avisa quando quiser retomar. Vou deixar tudo registrado por aqui." },
+      { gatilho: ['não quero','desisti','não'], resposta: "Sem problema! Pode me chamar quando quiser. Obrigado pelo seu tempo! 😊" },
+    ]
+  }
 };
 
-function getRespostaAleatoria(interesse) {
-  const lista = respostasLead[interesse] || respostasLead['default'];
-  return lista[Math.floor(Math.random() * lista.length)];
+function gerarRespostaIA(texto, interesse) {
+  const t = texto.toLowerCase();
+  const roteiro = roteiros[interesse] || roteiros.default;
+  const todasRegras = [...(roteiro.positivo || []), ...(roteiro.negativo || [])];
+
+  for (const regra of todasRegras) {
+    if (regra.gatilho.some(g => t.includes(g))) return regra.resposta;
+  }
+
+  // Respostas genéricas se nenhum gatilho bater
+  const genericas = [
+    "Entendido! Me conta mais pra eu poder te ajudar melhor 😊",
+    "Boa pergunta! Deixa eu verificar as opções disponíveis pra você...",
+    "Faz sentido! Posso te passar mais detalhes sobre isso. Tem alguma outra dúvida?",
+    "Certo! Vou anotar aqui. Posso te fazer uma proposta personalizada baseada nisso?",
+    "Compreendo! Cada caso é único. Vou analisar o melhor plano pra sua situação 💪",
+    "Perfeito! Isso me ajuda muito. Me confirma mais um detalhe pra montar sua simulação?",
+  ];
+  return genericas[Math.floor(Math.random() * genericas.length)];
 }
 
 async function sendMsg() {
@@ -600,21 +711,21 @@ async function sendMsg() {
     await spost('mensagens', { lead_id: selId, texto: t, direcao: 'out' });
     await loadMsgs(selId);
 
-    // Simula digitação do lead e resposta automática
+    // Simula digitação do lead e resposta automática inteligente
     const lead = leads.find(l => l.id === selId);
     const interesse = lead ? lead.interesse : '';
     const h = document.getElementById('history');
 
     // Mostra "digitando..."
     const typingId = 'typing-' + Date.now();
-    h.innerHTML += `<div id="${typingId}" class="hmsg in"><div class="mbub in" style="color:var(--text3);font-style:italic">digitando...</div></div>`;
+    h.innerHTML += `<div id="${typingId}" class="hmsg in"><div class="mbub in" style="color:var(--text3);font-style:italic;display:flex;align-items:center;gap:6px"><span>digitando</span><span style="animation:sp 1s linear infinite;display:inline-block;width:14px;height:14px;border:2px solid #ccc;border-top-color:var(--green);border-radius:50%"></span></div></div>`;
     h.scrollTop = h.scrollHeight;
 
-    // Delay realista entre 2s e 5s
-    const delay = 2000 + Math.random() * 3000;
+    const delay = 2500 + Math.random() * 2500;
+    const textoEnviado = t;
     setTimeout(async () => {
       try {
-        const resposta = getRespostaAleatoria(interesse);
+        const resposta = gerarRespostaIA(textoEnviado, interesse);
         await spost('mensagens', { lead_id: selId, texto: resposta, direcao: 'in' });
         await loadMsgs(selId);
       } catch (e) { console.error(e); }
