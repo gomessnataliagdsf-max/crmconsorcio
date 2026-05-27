@@ -616,90 +616,92 @@ async function loadMsgs(lid) {
     h.scrollTop = h.scrollHeight;
   } catch (e) { h.innerHTML = '<div class="mdiv">Erro ao carregar histórico.</div>'; }
 }
-// ==================== SISTEMA DE RESPOSTAS INTELIGENTES ====================
-const roteiros = {
-  Automóvel: {
-    positivo: [
-      { gatilho: ['oi','olá','boa','bom','tudo'], resposta: "Oi! Que bom falar com você! 😊 Estava esperando seu contato. Você ainda tem interesse no consórcio de automóvel?" },
-      { gatilho: ['sim','tenho','quero','interesse','gostei'], resposta: "Ótimo! Pra te passar os valores certinhos, qual modelo de carro você está pensando? Tem alguma marca em mente?" },
-      { gatilho: ['corolla','civic','uno','gol','hb20','onix','carro','modelo'], resposta: "Excelente escolha! Pra esse modelo, trabalhamos com créditos a partir de R$ 60.000. A parcela começa em torno de R$ 620/mês em 80 meses. Quer que eu monte uma simulação personalizada pra você?" },
-      { gatilho: ['simulação','simula','valor','parcela','quanto'], resposta: "Claro! Posso montar agora mesmo. Me confirma: qual o valor do crédito que você precisa? A partir daí te mostro as opções de prazo e parcela 📊" },
-      { gatilho: ['fgts','lance','contemplação','sorteio'], resposta: "Boa pergunta! Você pode usar o FGTS como lance sim, o que aumenta muito suas chances de contemplação logo nos primeiros meses. Em média nossos clientes são contemplados em 12 a 18 meses. Quer saber mais sobre os tipos de lance?" },
-      { gatilho: ['aceito','vamos','pode','fechar','quero fechar','topei'], resposta: "Que notícia incrível! 🎉 Posso dar andamento agora. Preciso de alguns dados seus: CPF, RG e comprovante de renda. Prefere que eu te envie o formulário por e-mail ou WhatsApp?" },
-      { gatilho: ['obrigado','obrigada','perfeito','ótimo','top','excelente'], resposta: "Fico muito feliz em ajudar! 😊 Qualquer dúvida que surgir pode me chamar aqui mesmo. Vou deixar tudo preparado pra você. Combinado?" },
-    ],
-    negativo: [
-      { gatilho: ['caro','não posso','não consigo','não tenho','sem dinheiro'], resposta: "Entendo! A boa notícia é que o consórcio é exatamente pra isso — sem juros, sem entrada. A parcela cabe no orçamento de quem pensa em comprar um carro a longo prazo. Posso te mostrar a menor parcela disponível?" },
-      { gatilho: ['não quero','desisti','não tenho interesse','deixa','esquece'], resposta: "Tudo bem! Não vou te pressionar. Mas posso deixar sua simulação salva aqui caso mude de ideia? Os valores e condições podem melhorar e te aviso 😊" },
-      { gatilho: ['financiamento','banco','cdc'], resposta: "Faz sentido comparar! A grande diferença é que no consórcio você não paga juros, só taxa de administração. No financiamento, os juros chegam a 20% ao ano. No final, você pode pagar até 40% a mais pelo mesmo carro. Quer ver a comparação lado a lado?" },
-      { gatilho: ['pensar','tempo','depois','semana'], resposta: "Claro, sem problema! Enquanto você pensa, posso te enviar uma proposta fechada por escrito? Assim você tem tudo em mãos pra comparar com calma." },
-    ]
-  },
-  Motocicleta: {
-    positivo: [
-      { gatilho: ['oi','olá','boa','bom'], resposta: "Olá! Boa tarde! 🏍️ Vi que você tem interesse em consórcio de moto. Já tem algum modelo em mente?" },
-      { gatilho: ['sim','tenho','quero','interesse'], resposta: "Ótimo! Trabalhamos com consórcio de moto a partir de R$ 12.000 de crédito. A parcela mais baixa fica em torno de R$ 180/mês. Qual modelo você está pensando?" },
-      { gatilho: ['honda','yamaha','bros','cg','biz','pop','moto','modelo'], resposta: "Boa escolha! Para essa moto, posso te simular um crédito de R$ 18.000 em 60 parcelas de R$ 310/mês, sem juros. Gostaria de ver essa simulação completa?" },
-      { gatilho: ['parcela','valor','simulação','quanto'], resposta: "Claro! Nossos planos de moto vão de R$ 12k a R$ 50k de crédito, em prazos de 36 a 72 meses. Me fala o valor da moto que você quer e te monto a simulação na hora 🔧" },
-      { gatilho: ['aceito','vamos','fechar','quero fechar','topei'], resposta: "Boa demais! 🎉 Pra dar início, vou precisar de: CPF, comprovante de residência e comprovante de renda. Consigo te atender ainda hoje se quiser agilizar!" },
-    ],
-    negativo: [
-      { gatilho: ['caro','não posso','não tenho'], resposta: "Entendo! Mas sabia que nossa parcela mínima de moto começa em R$ 178/mês? É menos que muitos planos de celular. Posso mostrar a opção mais acessível pra você?" },
-      { gatilho: ['pensar','depois','semana','tempo'], resposta: "Com certeza! Enquanto pensa, te mando a simulação por escrito pra ter como referência. Pode ser?" },
-      { gatilho: ['não quero','desisti','não tenho interesse'], resposta: "Sem problema! Se mudar de ideia, pode me chamar. Deixo seu cadastro aqui com as condições salvas 😊" },
-    ]
-  },
-  Imóvel: {
-    positivo: [
-      { gatilho: ['oi','olá','boa','bom'], resposta: "Olá! Tudo bem? 🏠 Fico feliz que entrou em contato! Você tem interesse em consórcio de imóvel. Está pensando em casa, apartamento ou terreno?" },
-      { gatilho: ['sim','tenho','quero','interesse','apartamento','casa','terreno'], resposta: "Que sonho lindo! 😊 Pra começar, qual valor aproximado do imóvel você está buscando? Com isso consigo te mostrar as melhores opções de crédito e parcela." },
-      { gatilho: ['300','280','250','200','400','500','valor','crédito'], resposta: "Perfeito! Para um imóvel nessa faixa, a parcela no consórcio começa em torno de R$ 890/mês, sem entrada e sem juros. Comparando com o financiamento, você economiza facilmente R$ 80.000 no total. Faz sentido pra você?" },
-      { gatilho: ['fgts','lance','contemplação'], resposta: "Sim! No consórcio de imóvel você pode usar o FGTS tanto como lance para ser contemplado mais rápido, quanto para quitar parcelas. É uma das maiores vantagens! Quer saber mais sobre como funciona o lance?" },
-      { gatilho: ['documentação','documento','rg','cpf','renda'], resposta: "Ótima pergunta! Os documentos básicos são: RG, CPF, comprovante de renda dos últimos 3 meses e comprovante de residência. Tudo bem simples. Quer que eu te envie a lista completa por escrito?" },
-      { gatilho: ['aceito','vamos','fechar','quero fechar','topei','combinado'], resposta: "Que notícia maravilhosa! 🎉🏠 Você está um passo mais perto do seu imóvel! Vou montar sua proposta agora. Me passa seu e-mail pra eu enviar o contrato pra assinatura ainda hoje?" },
-      { gatilho: ['obrigado','obrigada','perfeito','ótimo'], resposta: "Fico muito feliz em poder ajudar na realização desse sonho! 🙏 Pode contar comigo em todo o processo. Qualquer dúvida estou aqui!" },
-    ],
-    negativo: [
-      { gatilho: ['caro','muito','não posso','não consigo'], resposta: "Entendo! Mas sabia que o consórcio de imóvel tem a parcela mais acessível do mercado pra esse valor? Sem juros e sem entrada. Posso te mostrar uma opção que caiba no seu orçamento atual?" },
-      { gatilho: ['financiamento','banco','caixa','minha casa'], resposta: "Boa comparação! No financiamento pela Caixa, uma parcela de R$ 890 no consórcio equivaleria a uma parcela de R$ 1.400+ com juros. A diferença vai toda pra você no consórcio. Posso te mostrar a simulação comparativa?" },
-      { gatilho: ['pensar','tempo','depois','marido','esposa','família'], resposta: "Claro, é uma decisão importante e merece ser pensada em família! Posso preparar uma proposta detalhada pra você apresentar? Assim facilita a conversa em casa 😊" },
-      { gatilho: ['não quero','desisti','não tenho interesse','não'], resposta: "Sem problema! Fica à vontade. Se quiser voltar a conversar sobre o assunto, estarei aqui. Posso deixar registrado seu interesse caso apareça alguma promoção especial?" },
-    ]
-  },
-  default: {
-    positivo: [
-      { gatilho: ['oi','olá','boa','bom'], resposta: "Olá! Tudo certo? Fico feliz em falar com você. Me conta, o que você está buscando hoje?" },
-      { gatilho: ['sim','tenho','quero','interesse'], resposta: "Ótimo! Pode contar. Qual modalidade de consórcio você tem mais interesse: carro, moto ou imóvel?" },
-      { gatilho: ['aceito','vamos','fechar','topei'], resposta: "Maravilha! 🎉 Vou dar andamento agora mesmo. Me confirma seus dados pra eu montar a proposta oficial?" },
-      { gatilho: ['obrigado','obrigada','ótimo','perfeito'], resposta: "Fico feliz em ajudar! Qualquer dúvida pode me chamar aqui. Estou à disposição 😊" },
-    ],
-    negativo: [
-      { gatilho: ['caro','não posso','não tenho'], resposta: "Entendo! Posso te mostrar opções que se encaixem melhor no seu orçamento? Temos planos muito acessíveis." },
-      { gatilho: ['pensar','depois','tempo'], resposta: "Claro! Me avisa quando quiser retomar. Vou deixar tudo registrado por aqui." },
-      { gatilho: ['não quero','desisti','não'], resposta: "Sem problema! Pode me chamar quando quiser. Obrigado pelo seu tempo! 😊" },
-    ]
-  }
+// ==================== RESPOSTAS DO CLIENTE ====================
+// O cliente responde em sequência, como uma conversa real de WhatsApp
+// Cada vez que o consultor manda msg, o cliente avança na conversa
+
+const conversasCliente = {
+  Automóvel: [
+    "Oi! Vi o anúncio de vocês. É sobre consórcio de carro né?",
+    "É... nunca fiz consórcio antes. Sempre tive medo de ficar pagando e não receber o carro.",
+    "Tá, mas quanto tempo eu ficaria esperando? Preciso de um carro em uns 6 meses no máximo.",
+    "Hmm... 6 meses é arriscado né. E se eu não for sorteado nesse tempo?",
+    "Esse lance que você falou, quanto eu precisaria dar pra ter uma chance boa?",
+    "Tô pensando num Onix ou HB20. Qual crédito eu precisaria pra esses modelos?",
+    "Essa parcela tá um pouco salgada pra mim não... cabe no orçamento mas aperta.",
+    "E se eu atrasar uma parcela, o que acontece? Perco tudo que paguei?",
+    "Minha esposa tá com medo de consórcio, ela prefere financiamento. Qual a diferença mesmo?",
+    "Ah, interessante... Mas no financiamento eu já saio com o carro na hora né.",
+    "É verdade, os juros do banco são absurdos. Já fiz as contas uma vez e assustei.",
+    "Tá bom, me manda essa simulação por escrito? Quero mostrar pra ela hoje à noite.",
+    "Ela gostou da proposta! Mas tá perguntando: se a gente precisar cancelar, perde o dinheiro?",
+    "Entendi. Acho que vale a pena sim. Que documentos preciso pra fechar?",
+    "CPF e comprovante de renda eu tenho. Mas trabalho de autônomo, serve extrato bancário?",
+    "Ótimo! Então pode ir montando. Mas me confirma: posso escolher qualquer concessionária quando for contemplado?",
+    "Perfeito! Vamos fechar então. Que horas você está disponível pra assinar?"
+  ],
+  Motocicleta: [
+    "Oi! Vi o anúncio de consórcio de moto. Quero entender melhor como funciona.",
+    "Trabalho de app né, preciso muito de uma moto. Tô com uma velha que só dá problema.",
+    "Mas no consórcio eu fico esperando ser sorteado? Não tem garantia de receber logo...",
+    "Quanto tempo em média pra ser contemplado sem dar lance?",
+    "E esse lance, eu posso usar o dinheiro que tenho guardado né? Quanto precisaria?",
+    "Tô pensando numa CG 160 ou Bros. Qual crédito eu precisaria pra essas motos?",
+    "Essa parcela tá ok. Mas minha renda varia porque depende das corridas. E se eu não conseguir pagar um mês?",
+    "Tem carência ou posso pular uma parcela sem ser penalizado?",
+    "É complicado... Porque preciso da moto pra trabalhar, entende? Sem moto não tem renda.",
+    "E o seguro? Tá incluso não né? Porque moto é arriscado demais sem seguro.",
+    "Hm, entendi. Mas e se a moto que eu quiser não tiver mais no estoque quando eu for contemplado?",
+    "Faz sentido. Me manda a simulação então. Qual o mínimo de crédito de vocês?",
+    "Tá dentro do que eu posso pagar. Que documentos precisa pra fechar?",
+    "Pode ir montando! Mas me fala uma coisa: em quanto tempo recebo o boleto pra começar a pagar?"
+  ],
+  Imóvel: [
+    "Oi, boa tarde! Vi que vocês trabalham com consórcio de imóvel. Tô pesquisando opções.",
+    "Tô de aluguel há 5 anos... tá pesando muito no bolso. Quero sair disso.",
+    "Mas no consórcio eu não recebo o imóvel na hora né? Isso me preocupa porque preciso sair do aluguel.",
+    "Quanto tempo em média as pessoas ficam esperando pra ser contempladas?",
+    "E esse lance com FGTS que você falou, como funciona exatamente?",
+    "Tenho uns R$ 22.000 de FGTS. Seria suficiente pra dar um lance competitivo?",
+    "Tô olhando apartamentos de 2 quartos aqui na região, em torno de R$ 280.000. Qual seria a parcela?",
+    "Essa parcela é parecida com o que pago de aluguel... Mas no financiamento seria diferente?",
+    "Um colega meu fez financiamento pela Caixa e a parcela dele é quase o dobro. Agora entendo porque o consórcio é vantajoso.",
+    "Mas e se eu for contemplado e o apartamento que eu quero custar mais que o crédito?",
+    "Certo! E posso usar o crédito pra comprar de pessoa física também ou só de construtora?",
+    "Sou autônomo... tenho extrato do banco mostrando a movimentação. Aceita como comprovante de renda?",
+    "Me manda a proposta por escrito então. Quero mostrar pro meu marido hoje à noite.",
+    "Ele aprovou! Que documentos precisa pra fechar? A gente quer avançar logo.",
+    "Perfeito! Pode ir preparando tudo. Quando assinamos o contrato?"
+  ],
+  default: [
+    "Oi! Vi o anúncio de vocês. Pode me explicar como funciona esse consórcio?",
+    "Nunca fiz consórcio antes... tenho um pouco de medo de entrar e não conseguir sair.",
+    "Tá, mas quanto tempo eu ficaria pagando sem receber nada?",
+    "E se eu precisar do dinheiro antes de ser sorteado, posso sair? Perco tudo?",
+    "Quanto seria a parcela pra um crédito de uns R$ 50.000?",
+    "Essa parcela cabe no orçamento sim. Mas tem juros em cima disso?",
+    "Sem juros mesmo? Parece bom demais... qual é a taxa de administração então?",
+    "Entendi. E se eu quiser dar um lance pra ser contemplado mais rápido, como funciona?",
+    "Que documentos eu precisaria pra fechar? Sou autônomo, não tenho holerite.",
+    "Extrato bancário serve? Tenho 3 meses aqui.",
+    "Tá bom, me manda a simulação então. Vou analisar e te dou um retorno.",
+    "Gostei! Vamos fechar. Quando posso assinar o contrato?"
+  ]
 };
 
-function gerarRespostaIA(texto, interesse) {
-  const t = texto.toLowerCase();
-  const roteiro = roteiros[interesse] || roteiros.default;
-  const todasRegras = [...(roteiro.positivo || []), ...(roteiro.negativo || [])];
+// Controla em qual mensagem da conversa cada lead está
+const progressoConversa = {};
 
-  for (const regra of todasRegras) {
-    if (regra.gatilho.some(g => t.includes(g))) return regra.resposta;
-  }
+function gerarRespostaIA(textoConsultor, interesse, leadId) {
+  const conversa = conversasCliente[interesse] || conversasCliente.default;
 
-  // Respostas genéricas se nenhum gatilho bater
-  const genericas = [
-    "Entendido! Me conta mais pra eu poder te ajudar melhor 😊",
-    "Boa pergunta! Deixa eu verificar as opções disponíveis pra você...",
-    "Faz sentido! Posso te passar mais detalhes sobre isso. Tem alguma outra dúvida?",
-    "Certo! Vou anotar aqui. Posso te fazer uma proposta personalizada baseada nisso?",
-    "Compreendo! Cada caso é único. Vou analisar o melhor plano pra sua situação 💪",
-    "Perfeito! Isso me ajuda muito. Me confirma mais um detalhe pra montar sua simulação?",
-  ];
-  return genericas[Math.floor(Math.random() * genericas.length)];
+  if (!progressoConversa[leadId]) progressoConversa[leadId] = 0;
+
+  const idx = progressoConversa[leadId];
+  const resposta = conversa[Math.min(idx, conversa.length - 1)];
+  progressoConversa[leadId]++;
+
+  return resposta;
 }
 
 async function sendMsg() {
